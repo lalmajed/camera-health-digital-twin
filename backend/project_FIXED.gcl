@@ -1,0 +1,516 @@
+@library("std","7.3.305-stable");
+
+@include("server/src/edi");
+@include("server/src/api");
+@include("server/src/model");
+
+// =================================================================================
+// EXPOSED API ENDPOINTS
+// =================================================================================
+// All @expose functions MUST be in project.gcl to be accessible via HTTP
+// Call format: curl -X POST http://localhost:8080/project::function_name
+// =================================================================================
+
+// ===============================
+// SITE HEALTH & METADATA QUERIES
+// ===============================
+
+@volatile
+type SiteView {
+    siteId: String;
+    lat: float?;
+    lon: float?;
+    numberOfLanes: float?;
+    direction: String?;
+    name_ar: String?;
+    name_en: String?;
+}
+
+@expose
+fn list_sites() : Array<SiteView> {
+    var out = Array<SiteView>{};
+
+    for (key, siteRef in sites_by_id) {
+        var s = siteRef.resolve();
+        out.add(SiteView {
+            siteId: s.siteId,
+            lat: s.lat,
+            lon: s.lon,
+            numberOfLanes: s.numberOfLanes,
+            direction: s.direction,
+            name_ar: s.name_ar,
+            name_en: s.name_en
+        });
+    }
+
+    return out;
+}
+
+@expose
+fn get_site_details(siteId: String): Site {
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef != null) {
+        return siteRef.resolve();
+    }
+    // Return an empty Site object instead of null
+    return Site {
+        siteId: siteId,
+        hourly_grid: Array<HourlyGridSummary>{},
+        hourly_quality: Array<HourlyQuality>{},
+        hourly_zones: Array<HourlyZoneStat>{},
+        ws_grid_daily: Array<WSGridSummary>{},
+        ws_zones_daily: Array<WSZoneSummary>{},
+        peaks_daily: Array<PeakSummary>{},
+        hourly_veh_stats: Array<HourlyZoneStatVeh>{},
+        vehicle_counts_total: Array<SiteCountsTotal>{},
+        vehicle_counts_by_type: Array<SiteCountsByVehicleType>{}
+    };
+}
+
+fn internal_debug(siteId: String) : SiteDebug {
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef == null) {
+        return SiteDebug {
+            siteId: siteId,
+            hourly_grid_count: -1,
+            hourly_quality_count: -1,
+            hourly_zones_count: -1,
+            ws_grid_daily_count: -1,
+            ws_zones_daily_count: -1,
+            peaks_daily_count: -1,
+            hourly_veh_stats_count: -1,
+            vehicle_counts_total_count: -1,
+            vehicle_counts_by_type_count: -1
+        };
+    }
+
+    var s = siteRef.resolve();
+
+    var g  = 0;
+    var q  = 0;
+    var z  = 0;
+    var wg = 0;
+    var wz = 0;
+    var p  = 0;
+    var hv = 0;
+    var vct = 0;
+    var vcbt = 0;
+
+    if (s.hourly_grid != null) {
+        g = s.hourly_grid.size();
+    }
+    if (s.hourly_quality != null) {
+        q = s.hourly_quality.size();
+    }
+    if (s.hourly_zones != null) {
+        z = s.hourly_zones.size();
+    }
+    if (s.ws_grid_daily != null) {
+        wg = s.ws_grid_daily.size();
+    }
+    if (s.ws_zones_daily != null) {
+        wz = s.ws_zones_daily.size();
+    }
+    if (s.peaks_daily != null) {
+        p = s.peaks_daily.size();
+    }
+    if (s.hourly_veh_stats != null) {
+        hv = s.hourly_veh_stats.size();
+    }
+    if (s.vehicle_counts_total != null) {
+        vct = s.vehicle_counts_total.size();
+    }
+    if (s.vehicle_counts_by_type != null) {
+        vcbt = s.vehicle_counts_by_type.size();
+    }
+
+    return SiteDebug {
+        siteId: s.siteId,
+        hourly_grid_count: g,
+        hourly_quality_count: q,
+        hourly_zones_count: z,
+        ws_grid_daily_count: wg,
+        ws_zones_daily_count: wz,
+        peaks_daily_count: p,
+        hourly_veh_stats_count: hv,
+        vehicle_counts_total_count: vct,
+        vehicle_counts_by_type_count: vcbt
+    };
+}
+
+@expose
+fn debug_site_RUHSM336() : SiteDebug {
+    return internal_debug("RUHSM336");
+}
+
+@expose
+fn debug_site_MUZSM014() : SiteDebug {
+    return internal_debug("MUZSM014");
+}
+
+@expose
+fn debug_site(siteId: String) : SiteDebug {
+    return internal_debug(siteId);
+}
+
+@expose
+fn test_import() : String {
+    import_site_day_health(
+        "data/organized_site_data/organized_site_data",
+        "RUHSM336",
+        "2025-08-10"
+    );
+    return "DONE";
+}
+
+@volatile
+type VehicleTypeStats {
+    siteId: String;
+    day: String;
+    vehicle_type: int;
+    metric: String;
+    hour: int;
+    frames: int;
+    good_frames: int;
+    bad_frames: int;
+    pct_good: float;
+}
+
+@expose
+fn get_vehicle_stats(
+    siteId: String,
+    day: String,
+    vehicle_type: int
+) : Array<HourlyZoneStatVeh> {
+
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef == null) {
+        return Array<HourlyZoneStatVeh>{};
+    }
+
+    var s = siteRef.resolve();
+    if (s.hourly_veh_stats == null) {
+        return Array<HourlyZoneStatVeh>{};
+    }
+
+    var out = Array<HourlyZoneStatVeh>{};
+
+    for (i, row in s.hourly_veh_stats) {
+        if (row.site == siteId &&
+            row.day == day &&
+            row.vehicle_type == vehicle_type)
+        {
+            out.add(row);
+        }
+    }
+
+    return out;
+}
+
+@expose
+fn get_vehicle_types_for_site(siteId: String, day: String) : Array<int> {
+
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef == null) {
+        return Array<int>{};
+    }
+
+    var s = siteRef.resolve();
+    if (s.hourly_veh_stats == null) {
+        return Array<int>{};
+    }
+
+    var out = Array<int>{};
+
+    for (i, row in s.hourly_veh_stats) {
+        if (row.site == siteId && row.day == day) {
+
+            var exists = false;
+
+            // Manual "contains"
+            for (j, v in out) {
+                if (v == row.vehicle_type) {
+                    exists = true;
+                }
+            }
+
+            if (!exists) {
+                out.add(row.vehicle_type);
+            }
+        }
+    }
+
+    return out;
+}
+
+@expose
+fn get_all_vehicle_stats(siteId: String, day: String) : Map<int, Array<HourlyZoneStatVeh>> {
+
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef == null) {
+        return Map<int, Array<HourlyZoneStatVeh>>{};
+    }
+
+    var s = siteRef.resolve();
+    if (s.hourly_veh_stats == null) {
+        return Map<int, Array<HourlyZoneStatVeh>>{};
+    }
+
+    var out = Map<int, Array<HourlyZoneStatVeh>>{};
+
+    for (i, row in s.hourly_veh_stats) {
+        if (row.site == siteId && row.day == day) {
+
+            if (!out.contains(row.vehicle_type)) {
+                out.set(row.vehicle_type, Array<HourlyZoneStatVeh>{});
+            }
+
+            var arr = out.get(row.vehicle_type);
+            arr.add(row);
+        }
+    }
+
+    return out;
+}
+
+// ===============================
+// VEHICLE ANALYSIS QUERIES
+// ===============================
+
+@expose
+fn get_vehicle_details(plate_number: String): Vehicle {
+    var vehicleRef = vehicle_by_plate.get(plate_number);
+    if (vehicleRef != null) {
+        return vehicleRef.resolve();
+    }
+    // Return an empty Vehicle object instead of null
+    return Vehicle {
+        plate_number: plate_number,
+        vehicle_type: 0,
+        vehicle_label: "Unknown",
+        first_day: "",
+        daily_quality: Array<VehicleDailyQuality>{}
+    };
+}
+
+@expose
+fn get_site_vehicle_counts_total(siteId: String, day: String): Array<SiteCountsTotal> {
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef == null) {
+        return Array<SiteCountsTotal>{};
+    }
+
+    var s = siteRef.resolve();
+    if (s.vehicle_counts_total == null) {
+        return Array<SiteCountsTotal>{};
+    }
+
+    var out = Array<SiteCountsTotal>{};
+    for (i, row in s.vehicle_counts_total) {
+        if (row.day == day) {
+            out.add(row);
+        }
+    }
+
+    return out;
+}
+
+@expose
+fn get_site_vehicle_counts_by_type(siteId: String, day: String): Array<SiteCountsByVehicleType> {
+    var siteRef = sites_by_id.get(siteId);
+    if (siteRef == null) {
+        return Array<SiteCountsByVehicleType>{};
+    }
+
+    var s = siteRef.resolve();
+    if (s.vehicle_counts_by_type == null) {
+        return Array<SiteCountsByVehicleType>{};
+    }
+
+    var out = Array<SiteCountsByVehicleType>{};
+    for (i, row in s.vehicle_counts_by_type) {
+        if (row.day == day) {
+            out.add(row);
+        }
+    }
+
+    return out;
+}
+
+// ===============================
+// TRIP ANALYSIS QUERIES
+// ===============================
+
+@expose
+fn get_trip_patterns_for_day(day: String) : Array<TripPattern> {
+    var out = Array<TripPattern>{};
+
+    for (key, patternRef in trip_patterns_by_id) {
+        var p = patternRef.resolve();
+        if (p.day == day) {
+            out.add(p);
+        }
+    }
+
+    return out;
+}
+
+@expose
+fn get_trips_for_pattern(pattern_id: String) : Array<Trip> {
+    var patternRef = trip_patterns_by_id.get(pattern_id);
+    if (patternRef == null) {
+        return Array<Trip>{};
+    }
+
+    var p = patternRef.resolve();
+    return p.trips;
+}
+
+@expose
+fn get_trip_by_plate_and_window(plate_number: String, window30: String) : Trip {
+    for (key, patternRef in trip_patterns_by_id) {
+        var p = patternRef.resolve();
+        for (i, trip in p.trips) {
+            if (trip.plate_number == plate_number && trip.window30 == window30) {
+                return trip;
+            }
+        }
+    }
+    // Return an empty Trip object instead of null
+    return Trip {
+        plate_number: plate_number,
+        window30: window30,
+        frames_in_trip: 0,
+        min_quality: 0.0,
+        max_quality: 0.0,
+        hour: 0,
+        site_list: "",
+        route_sig_str: "",
+        n_sites: 0,
+        route_n_cars: 0,
+        degrade_site_strict: false,
+        site_issue_strict: false,
+        car_issue_singleton_extreme: false,
+        issue_label: "Not Found",
+        steps: Array<TripStep>{}
+    };
+}
+
+// ===============================
+// CITY PROFILE QUERIES
+// ===============================
+
+@expose
+fn get_city_profile(day: String): CityProfile {
+    var profileRef = city_profile_by_day.get(day);
+    if (profileRef != null) {
+        return profileRef.resolve();
+    }
+    // Return an empty CityProfile object instead of null
+    return CityProfile {
+        day: day,
+        overall: CityOverallStats {
+            detections_total_all_days: 0,
+            detections_good_all_days: 0,
+            detections_missed_all_days: 0,
+            elapsed_days: 0,
+            n_sites_total: 0,
+            unique_cars_all_days: 0,
+            total_unique_cars: 0,
+            cars_any_degraded: 0,
+            cars_no_degrade: 0,
+            cars_all_sites_degraded: 0,
+            pct_good_all_days: 0.0,
+            pct_missed_all_days: 0.0,
+            threshold_good: 0.0
+        },
+        by_vehicle_type: Array<CityVehicleTypeStats>{}
+    };
+}
+
+@expose
+fn get_city_overall_stats(day: String): CityOverallStats {
+    var profileRef = city_profile_by_day.get(day);
+    if (profileRef != null) {
+        var profile = profileRef.resolve();
+        return profile.overall;
+    }
+    // Return an empty CityOverallStats object instead of null
+    return CityOverallStats {
+        detections_total_all_days: 0,
+        detections_good_all_days: 0,
+        detections_missed_all_days: 0,
+        elapsed_days: 0,
+        n_sites_total: 0,
+        unique_cars_all_days: 0,
+        total_unique_cars: 0,
+        cars_any_degraded: 0,
+        cars_no_degrade: 0,
+        cars_all_sites_degraded: 0,
+        pct_good_all_days: 0.0,
+        pct_missed_all_days: 0.0,
+        threshold_good: 0.0
+    };
+}
+
+@expose
+fn get_city_stats_by_vehicle_type(day: String): Array<CityVehicleTypeStats> {
+    var profileRef = city_profile_by_day.get(day);
+    if (profileRef != null) {
+        var profile = profileRef.resolve();
+        return profile.by_vehicle_type;
+    }
+    return Array<CityVehicleTypeStats>{};
+}
+
+// =================================================================================
+// MAIN ENTRY POINT
+// =================================================================================
+
+fn main() {
+    println("INITIALIZING FULL DIGITAL TWIN...");
+
+    // Define the target day for import
+    var target_day_nodash = "20250810";
+    var target_day_dashcp = "2025_08_10";
+    var target_day_dashtr = "2025-08-10";
+    
+    // --- 1. Load Static Site Metadata ---
+    load_site_metadata("data/site_metadata/site_meta_final.csv");
+
+    // --- 2. Load Vehicle Analysis Data ---
+    // Note: These files may contain data for multiple days
+    // import_vehicle_plate_data("data/first half/city_plates_not_always_degraded_20250808.csv");
+
+    import_site_counts_total("data/first half/site_counts_total.csv");
+    import_site_counts_by_vehicle_type("data/first half/site_counts_by_vehicle_type.csv");
+
+    // --- 3. Load Trip Analysis Data for the target day ---
+    var labeled_trips_path = "data/downloaded_storage_data/trip_analysis_extracted/trip_analysis/${target_day_dashtr}/trips_30min_labeled_${target_day_dashtr}.csv";
+    var steps_path = "data/downloaded_storage_data/trip_analysis_extracted/trip_analysis/${target_day_dashtr}/steps_30min_flagged_${target_day_dashtr}.csv";
+    import_trip_data(target_day_dashtr, labeled_trips_path, steps_path);
+
+    // --- 4. Load City Profile Data for the target day ---
+    var city_profile_path = "data/city_profile_multi/${target_day_dashtr}/overall_stats_${target_day_dashcp}.csv";
+    import_city_profile(target_day_dashcp, city_profile_path);
+
+    // --- 5. Load Site-Specific Health Data (Example) ---
+    // This would typically be looped for all sites or triggered on demand
+    import_site_day_health(
+        "data/organized_site_data/organized_site_data",
+        "RUHSM336", // Example site
+        target_day_dashtr
+    );
+
+    println("FULL DIGITAL TWIN LOADED FOR DAY: " + target_day_dashtr);
+    println("");
+    println("=== HTTP API ENDPOINTS (use POST requests) ===");
+    println("curl -X POST http://localhost:8080/project::list_sites");
+    println("curl -X POST -d '[\"RUHSM336\"]' http://localhost:8080/project::get_site_details");
+    println("curl -X POST -d '[\"ABC123\"]' http://localhost:8080/project::get_vehicle_details");
+    println("curl -X POST -d '[\"2025-08-10\"]' http://localhost:8080/project::get_trip_patterns_for_day");
+    println("curl -X POST -d '[\"2025-08-10\"]' http://localhost:8080/project::get_city_profile");
+    println("curl -X POST -d '[\"RUHSM336\"]' http://localhost:8080/project::debug_site");
+    println("curl -X POST http://localhost:8080/project::debug_site_RUHSM336");
+    println("");
+}

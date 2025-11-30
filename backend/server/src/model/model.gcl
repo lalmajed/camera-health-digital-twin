@@ -1,0 +1,458 @@
+// =================================================================================
+// MODEL.GCL - Fixed Data Model Definitions
+// =================================================================================
+
+// =====================
+// GLOBAL INDICES
+// =====================
+var sites_by_id: nodeIndex<String, node<Site>>;
+var trip_patterns_by_id: nodeIndex<String, node<TripPattern>>;
+var city_profile_by_day: nodeIndex<String, node<CityProfile>>;
+var vehicle_by_plate: nodeIndex<String, node<Vehicle>>;
+
+// =====================
+// SITE HEALTH & METADATA
+// =====================
+
+@volatile
+type SiteCSV {
+    location: String;
+    geolatitude: float?;
+    geolongitude: float?;
+    number_of_lanes: float?;
+    Direction: String?;
+    Streat_Name_Arabic: String?;
+    Streat_Name_English: String?;
+}
+
+@volatile
+type SiteDebug {
+    siteId: String;
+    hourly_grid_count: int;
+    hourly_quality_count: int;
+    hourly_zones_count: int;
+    ws_grid_daily_count: int;
+    ws_zones_daily_count: int;
+    peaks_daily_count: int;
+    hourly_veh_stats_count: int;
+    vehicle_counts_total_count: int;
+    vehicle_counts_by_type_count: int;
+}
+
+type Site {
+    siteId: String;
+
+    lat: float?;
+    lon: float?;
+    numberOfLanes: float?;
+    direction: String?;
+    name_ar: String?;
+    name_en: String?;
+
+    // ALL TYPES HEALTH DATA
+    hourly_grid: Array<HourlyGridSummary>?;
+    hourly_quality: Array<HourlyQuality>?;
+    hourly_zones: Array<HourlyZoneStat>?;
+    ws_grid_daily: Array<WSGridSummary>?;
+    ws_zones_daily: Array<WSZoneSummary>?;
+    peaks_daily: Array<PeakSummary>?;
+
+    // PER VEHICLE TYPE
+    hourly_veh_stats: Array<HourlyZoneStatVeh>?;
+    
+    // VEHICLE COUNTS (NEW)
+    vehicle_counts_total: Array<SiteCountsTotal>?;
+    vehicle_counts_by_type: Array<SiteCountsByVehicleType>?;
+}
+
+// =====================
+// ALL TYPES HEALTH
+// =====================
+
+type HourlyGridSummary {
+    site: String;
+    day: String;
+    ts_hour: String;
+    hour_str: String;
+
+    total_frames: int;
+    total_good: int;
+    total_bad: int;
+
+    active_cells: int;
+    good_cells: int;
+    bad_cells: int;
+    dead_cells: int;
+
+    pct_good_all: float;
+    pct_good_cells: float;
+}
+
+type HourlyQuality {
+    site: String;
+    city: String?;
+    day: String;
+    date_d: String;
+    ts_hour: String;
+    hour: int;
+
+    frames: int;
+    good_frames: int;
+    bad_frames: int;
+
+    pct_good: float;
+    threshold_q: float?;
+    dawn: bool?;
+    dusk: bool?;
+    is_night: bool?;
+}
+
+type HourlyZoneStat {
+    site: String;
+    day: String;
+    ts_hour: String;
+    hour_str: String;
+
+    zone_raw: String;
+    zone_row: int;
+    zone_col: int;
+
+    frames: int;
+    good_frames: int;
+    bad_frames: int;
+
+    pct_good: float;
+
+    color: String?;
+    active: bool?;
+    good_cell: bool?;
+    bad_cell: bool?;
+    dead_cell: bool?;
+
+    threshold_q: float?;
+}
+
+type PeakSummary {
+    site: String;
+    day: String;
+    metric: String;
+    ts_hour: String;
+    hour: int;
+
+    frames: int;
+    good_frames: int;
+    bad_frames: int;
+
+    pct_good: float;
+    threshold_q: float?;
+}
+
+type WSGridSummary {
+    site: String;
+    day: String;
+
+    grid_rows: int;
+    grid_cols: int;
+
+    cells_total: int;
+    cells_active: int;
+    cells_good: int;
+    cells_bad: int;
+    cells_dead: int;
+
+    pct_good_overall: float;
+
+    frames_total: int;
+    frames_good: int;
+    frames_bad: int;
+
+    threshold_q: float?;
+}
+
+type WSZoneSummary {
+    site: String;
+    day: String;
+
+    zone: String;
+    frames: int;
+    good_frames: int;
+    bad_frames: int;
+
+    pct_good: float;
+    threshold_q: float?;
+}
+
+// ==========================
+// PER VEHICLE TYPE
+// ==========================
+type HourlyZoneStatVeh {
+    site: String;
+    day: String;
+
+    vehicle_type: int;
+    metric: String;
+
+    ts_hour: String;
+    hour: int;
+
+    frames: int;
+    good_frames: int;
+    bad_frames: int;
+
+    pct_good: float;
+    threshold_q: float?;
+}
+
+// =====================
+// VEHICLE ANALYSIS (NEW)
+// =====================
+
+type Vehicle {
+    plate_number: String;
+    vehicle_type: int;
+    vehicle_label: String;
+    first_day: String;
+    daily_quality: Array<VehicleDailyQuality>;
+}
+
+type VehicleDailyQuality {
+    day: String;
+    cum_min_q: float;
+    cum_max_q: float;
+    cum_n_frames: int;
+}
+
+@volatile
+type VehiclePlateCSV {
+    day: String;
+    plate_numbers: String;
+    vehicle_type: int;
+    vehicle_label: String;
+    first_day: String;
+    cum_min_q: float;
+    cum_max_q: float;
+    cum_n_frames: int;
+}
+
+@volatile
+type SiteCountsTotalCSV {
+    day: String;
+    site: String;
+    unique_vehicles: int;
+    always_degraded_vehicles: int;
+    not_always_degraded_vehicles: int;
+}
+
+type SiteCountsTotal {
+    day: String;
+    site: String;
+    unique_vehicles: int;
+    always_degraded_vehicles: int;
+    not_always_degraded_vehicles: int;
+}
+
+@volatile
+type SiteCountsByVehicleTypeCSV {
+    day: String;
+    site: String;
+    vehicle_type: int;
+    unique_vehicles: int;
+    always_degraded_vehicles: int;
+    not_always_degraded_vehicles: int;
+}
+
+type SiteCountsByVehicleType {
+    day: String;
+    site: String;
+    vehicle_type: int;
+    unique_vehicles: int;
+    always_degraded_vehicles: int;
+    not_always_degraded_vehicles: int;
+}
+
+// =====================
+// TRIP ANALYSIS (NEW)
+// =====================
+
+type Trip {
+    plate_number: String;
+    window30: String;
+    frames_in_trip: int;
+    min_quality: float;
+    max_quality: float;
+    hour: int;
+    site_list: String;
+    route_sig_str: String;
+    n_sites: int;
+    route_n_cars: int;
+    degrade_site_strict: bool;
+    site_issue_strict: bool;
+    car_issue_singleton_extreme: bool;
+    issue_label: String;
+    steps: Array<TripStep>;
+}
+
+type TripStep {
+    plate_number: String;
+    site: String;
+    ts: String;
+    hour: int;
+    pos: int;
+    img_quality: float;
+    img_name: String;
+    leg_id: int;
+    vehicle_type: int;
+}
+
+type TripPattern {
+    pattern_id: String;
+    day: String;
+    trips: Array<Trip>;
+}
+
+@volatile
+type TripLabeledCSV {
+    plate_numbers: String;
+    window30: String;
+    frames_in_trip: int;
+    min_quality: float;
+    max_quality: float;
+    hour: int;
+    site_list: String;
+    route_sig_str: String;
+    n_sites: int;
+    route_n_cars: int;
+    degrade_site_strict: String;
+    site_issue_strict: String;
+    car_issue_singleton_extreme: String;
+    issue_label: String;
+}
+
+// =================================================================================
+// FIXED TripStepCSV DEFINITION
+// =================================================================================
+@volatile
+type TripStepCSV {
+    plate_numbers: String;
+    site: String;
+    ts: String;
+    hour: int;
+    window30: String;
+    pos: int;
+    img_quality: float;
+    img_name: String;
+    leg_id: int;
+    ws_x_min: float?;
+    ws_x_max: float?;
+    ws_y_min: float?;
+    ws_y_max: float?;
+    x_min: float?;
+    x_max: float?;
+    y_min: float?;
+    y_max: float?;
+    plate_x_min: float?;
+    plate_x_max: float?;
+    plate_y_min: float?;
+    plate_y_max: float?;
+    route_sig_str: String;
+    img_width: int?;
+    img_hieght: int?;
+    Vehicle_type: int;
+}
+
+// =====================
+// CITY PROFILE (NEW)
+// =====================
+
+type CityProfile {
+    day: String;
+    overall: CityOverallStats;
+    by_vehicle_type: Array<CityVehicleTypeStats>;
+}
+
+type CityOverallStats {
+    detections_total_all_days: int;
+    detections_good_all_days: int;
+    detections_missed_all_days: int;
+    elapsed_days: int;
+    n_sites_total: int;
+    unique_cars_all_days: int;
+    total_unique_cars: int;
+    cars_any_degraded: int;
+    cars_no_degrade: int;
+    cars_all_sites_degraded: int;
+    pct_good_all_days: float;
+    pct_missed_all_days: float;
+    threshold_good: float;
+}
+
+type CityVehicleTypeStats {
+    vehicle_type: int;
+    detections_total_all_days: int;
+    detections_good_all_days: int;
+    detections_missed_all_days: int;
+    elapsed_days: int;
+    n_sites_total: int;
+    unique_cars_all_days: int;
+    total_unique_cars: int;
+    cars_any_degraded: int;
+    cars_no_degrade: int;
+    cars_all_sites_degraded: int;
+    pct_good_all_days: float;
+    pct_missed_all_days: float;
+    threshold_good: float;
+}
+
+@volatile
+type CityOverallStatsCSV {
+    detections_total_all_days: int;
+    detections_good_all_days: int;
+    detections_missed_all_days: int;
+    elapsed_days: int;
+    n_sites_total: int;
+    unique_cars_all_days: int;
+    total_unique_cars: int;
+    cars_any_degraded: int;
+    cars_no_degrade: int;
+    cars_all_sites_degraded: int;
+    pct_good_all_days: float;
+    pct_missed_all_days: float;
+    threshold_good: float;
+}
+
+@volatile
+type CityVehicleTypeStatsCSV {
+    vehicle_type: int;
+    detections_total_all_days: int;
+    detections_good_all_days: int;
+    detections_missed_all_days: int;
+    elapsed_days: int;
+    n_sites_total: int;
+    unique_cars_all_days: int;
+    total_unique_cars: int;
+    cars_any_degraded: int;
+    cars_no_degrade: int;
+    cars_all_sites_degraded: int;
+    pct_good_all_days: float;
+    pct_missed_all_days: float;
+    threshold_good: float;
+    day: String;
+}
+
+@volatile
+type CityCountsTotalCSV {
+    day: String;
+    unique_vehicles: int;
+    always_degraded_vehicles: int;
+    not_always_degraded_vehicles: int;
+}
+
+@volatile
+type CityCountsByVehicleTypeCSV {
+    day: String;
+    vehicle_type: int;
+    vehicle_label: String;
+    unique_vehicles: int;
+    always_degraded_vehicles: int;
+    not_always_degraded_vehicles: int;
+}

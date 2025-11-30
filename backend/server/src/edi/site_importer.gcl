@@ -1,0 +1,456 @@
+// =================================================================================
+// SITE_IMPORTER.GCL - Fixed Import Functions
+// =================================================================================
+
+// ===============================
+// SITE METADATA & HEALTH IMPORT
+// ===============================
+
+fn load_site_metadata(path: String) {
+
+    println("Loading site metadata: " + path);
+
+    var reader = CsvReader<SiteCSV> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+
+        var site = Site {
+            siteId: row.location,
+            lat: row.geolatitude,
+            lon: row.geolongitude,
+            numberOfLanes: row.number_of_lanes,
+            direction: row.Direction,
+            name_ar: row.Streat_Name_Arabic,
+            name_en: row.Streat_Name_English,
+
+            hourly_grid: Array<HourlyGridSummary>{},
+            hourly_quality: Array<HourlyQuality>{},
+            hourly_zones: Array<HourlyZoneStat>{},
+            ws_grid_daily: Array<WSGridSummary>{},
+            ws_zones_daily: Array<WSZoneSummary>{},
+            peaks_daily: Array<PeakSummary>{},
+            hourly_veh_stats: Array<HourlyZoneStatVeh>{},
+            vehicle_counts_total: Array<SiteCountsTotal>{},
+            vehicle_counts_by_type: Array<SiteCountsByVehicleType>{}
+        };
+
+        sites_by_id.set(row.location, node<Site>{ site });
+    }
+
+    println("✓ Clean site metadata loaded");
+}
+
+fn get_or_fail_site(siteId: String) : node<Site> {
+    var ref = sites_by_id.get(siteId);
+    if (ref == null) {
+        println("Unknown site: " + siteId);
+        return null;
+    }
+    return ref;
+}
+
+fn get_or_create_site(siteId: String) : node<Site> {
+    var ref = sites_by_id.get(siteId);
+    if (ref == null) {
+        println("Warning: Creating placeholder site: " + siteId);
+        var site = Site {
+            siteId: siteId,
+            hourly_grid: Array<HourlyGridSummary>{},
+            hourly_quality: Array<HourlyQuality>{},
+            hourly_zones: Array<HourlyZoneStat>{},
+            ws_grid_daily: Array<WSGridSummary>{},
+            ws_zones_daily: Array<WSZoneSummary>{},
+            peaks_daily: Array<PeakSummary>{},
+            hourly_veh_stats: Array<HourlyZoneStatVeh>{},
+            vehicle_counts_total: Array<SiteCountsTotal>{},
+            vehicle_counts_by_type: Array<SiteCountsByVehicleType>{}
+        };
+        ref = node<Site>{ site };
+        sites_by_id.set(siteId, ref);
+    }
+    return ref;
+}
+
+fn import_site_day_health(root: String, siteId: String, day: String) {
+
+    var siteRef = get_or_fail_site(siteId);
+    if (siteRef == null) {
+        return;
+    }
+
+    var s = siteRef.resolve();
+
+    var folder = "${root}/${siteId}/DAY_VIEW/${day}";
+
+    import_hourly_grid(s, "${folder}/${siteId}_${day}_hourly_grid_summary.csv");
+    import_hourly_quality(s, "${folder}/${siteId}_${day}_hourly_quality.csv");
+    import_hourly_zones(s, "${folder}/${siteId}_${day}_hourly_zone_stats_3x4.csv");
+    import_vehicle_hourly_stats(s, siteId, day);
+    import_peaks(s, "${folder}/${siteId}_${day}_peaks_summary.csv");
+    import_ws_grid_summary(s, "${folder}/${siteId}_${day}_ws_grid_3x4_summary.csv");
+    import_ws_zones(s, "${folder}/${siteId}_${day}_ws_grid_3x4_zones.csv");
+
+    println("✓ Imported health for ${siteId} on ${day}");
+}
+
+fn import_hourly_grid(s: Site, path: String) {
+    var reader = CsvReader<HourlyGridSummary> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == s.siteId) {
+            s.hourly_grid.add(row);
+        }
+    }
+}
+
+fn import_hourly_quality(s: Site, path: String) {
+    var reader = CsvReader<HourlyQuality> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == s.siteId) {
+            s.hourly_quality.add(row);
+        }
+    }
+}
+
+fn import_hourly_zones(s: Site, path: String) {
+    var reader = CsvReader<HourlyZoneStat> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == s.siteId) {
+            s.hourly_zones.add(row);
+        }
+    }
+}
+
+fn import_peaks(s: Site, path: String) {
+    var reader = CsvReader<PeakSummary> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == s.siteId) {
+            s.peaks_daily.add(row);
+        }
+    }
+}
+
+fn import_ws_grid_summary(s: Site, path: String) {
+    var reader = CsvReader<WSGridSummary> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == s.siteId) {
+            s.ws_grid_daily.add(row);
+        }
+    }
+}
+
+fn import_ws_zones(s: Site, path: String) {
+    var reader = CsvReader<WSZoneSummary> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == s.siteId) {
+            s.ws_zones_daily.add(row);
+        }
+    }
+}
+
+fn import_vehicle_hourly_stats(s: Site, siteId: String, day: String) {
+
+    if (s.hourly_veh_stats == null) {
+        s.hourly_veh_stats = Array<HourlyZoneStatVeh>{};
+    }
+
+    var root = "data/organized_site_data_uniqueImg_NEW/organized_site_data_uniqueImg_FINAL";
+    var folder = "${root}/${siteId}/DAY_VIEW/${day}";
+    var file = "${folder}/${siteId}_${day}_hourly_zone_stats_3x4.csv";
+
+    var reader = CsvReader<HourlyZoneStatVeh> {
+        path: file,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        if (row.site == siteId) {
+            s.hourly_veh_stats.add(row);
+        }
+    }
+
+    println("✓ Imported PER-VEHICLE stats for ${siteId} on ${day}");
+}
+
+// ===============================
+// VEHICLE ANALYSIS IMPORT (FIXED)
+// ===============================
+
+fn import_vehicle_plate_data(path: String) {
+    println("Loading vehicle plate data: " + path);
+    var reader = CsvReader<VehiclePlateCSV> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        var vehicleRef = vehicle_by_plate.get(row.plate_numbers);
+        var v: Vehicle;
+
+        if (vehicleRef == null) {
+            v = Vehicle {
+                plate_number: row.plate_numbers,
+                vehicle_type: row.vehicle_type,
+                vehicle_label: row.vehicle_label,
+                first_day: row.first_day,
+                daily_quality: Array<VehicleDailyQuality>{}
+            };
+            vehicle_by_plate.set(row.plate_numbers, node<Vehicle>{ v });
+        } else {
+            v = vehicleRef.resolve();
+        }
+
+        v.daily_quality.add(VehicleDailyQuality{
+            day: row.day,
+            cum_min_q: row.cum_min_q,
+            cum_max_q: row.cum_max_q,
+            cum_n_frames: row.cum_n_frames
+        });
+    }
+
+    println("✓ Vehicle plate data loaded");
+}
+
+fn import_site_counts_total(path: String) {
+    println("Loading site counts total: " + path);
+    var reader = CsvReader<SiteCountsTotalCSV> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        var siteRef = get_or_create_site(row.site);
+        var s = siteRef.resolve();
+        // FIX: Manually map from CSV type to persistent type
+        s.vehicle_counts_total.add(SiteCountsTotal {
+            day: row.day,
+            site: row.site,
+            unique_vehicles: row.unique_vehicles,
+            always_degraded_vehicles: row.always_degraded_vehicles,
+            not_always_degraded_vehicles: row.not_always_degraded_vehicles
+        });
+    }
+
+    println("✓ Site counts total loaded");
+}
+
+fn import_site_counts_by_vehicle_type(path: String) {
+    println("Loading site counts by vehicle type: " + path);
+    var reader = CsvReader<SiteCountsByVehicleTypeCSV> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (reader.can_read()) {
+        var row = reader.read();
+        var siteRef = get_or_create_site(row.site);
+        var s = siteRef.resolve();
+        // FIX: Manually map from CSV type to persistent type
+        s.vehicle_counts_by_type.add(SiteCountsByVehicleType {
+            day: row.day,
+            site: row.site,
+            vehicle_type: row.vehicle_type,
+            unique_vehicles: row.unique_vehicles,
+            always_degraded_vehicles: row.always_degraded_vehicles,
+            not_always_degraded_vehicles: row.not_always_degraded_vehicles
+        });
+    }
+
+    println("✓ Site counts by vehicle type loaded");
+}
+
+// ===============================
+// TRIP ANALYSIS IMPORT (FIXED)
+// ===============================
+
+fn import_trip_data(day: String, labeled_trips_path: String, steps_path: String) {
+    println("Importing trip data for day: " + day);
+
+    // First, read all the steps and group them by plate number and window
+    var steps_by_key = Map<String, Array<TripStep>>{};
+    var steps_reader = CsvReader<TripStepCSV> {
+        path: steps_path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (steps_reader.can_read()) {
+        var row = steps_reader.read();
+        var key = row.plate_numbers + "_" + row.window30;
+        
+        if (!steps_by_key.contains(key)) {
+            steps_by_key.set(key, Array<TripStep>{});
+        }
+
+        steps_by_key.get(key).add(TripStep{
+            plate_number: row.plate_numbers,
+            site: row.site,
+            ts: row.ts,
+            hour: row.hour,
+            pos: row.pos,
+            img_quality: row.img_quality,
+            img_name: row.img_name,
+            leg_id: row.leg_id,
+            vehicle_type: row.Vehicle_type
+        });
+    }
+
+    // Second, process the labeled trips and attach the steps
+    var trips_reader = CsvReader<TripLabeledCSV> {
+        path: labeled_trips_path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    while (trips_reader.can_read()) {
+        var row = trips_reader.read();
+        var patternRef = trip_patterns_by_id.get(row.route_sig_str);
+        var p: TripPattern;
+
+        if (patternRef == null) {
+            p = TripPattern {
+                pattern_id: row.route_sig_str,
+                day: day,
+                trips: Array<Trip>{}
+            };
+            trip_patterns_by_id.set(row.route_sig_str, node<TripPattern>{ p });
+        } else {
+            p = patternRef.resolve();
+        }
+
+        var key = row.plate_numbers + "_" + row.window30;
+        var trip_steps = steps_by_key.get(key);
+        if (trip_steps == null) {
+            trip_steps = Array<TripStep>{};
+        }
+
+        p.trips.add(Trip{
+            plate_number: row.plate_numbers,
+            window30: row.window30,
+            frames_in_trip: row.frames_in_trip,
+            min_quality: row.min_quality,
+            max_quality: row.max_quality,
+            hour: row.hour,
+            site_list: row.site_list,
+            route_sig_str: row.route_sig_str,
+            n_sites: row.n_sites,
+            route_n_cars: row.route_n_cars,
+            degrade_site_strict: row.degrade_site_strict == "true",
+            site_issue_strict: row.site_issue_strict == "true",
+            car_issue_singleton_extreme: row.car_issue_singleton_extreme == "true",
+            issue_label: row.issue_label,
+            steps: trip_steps
+        });
+    }
+
+    println("✓ Trip data imported for " + day);
+}
+
+// ===============================
+// CITY PROFILE IMPORT (FIXED)
+// ===============================
+
+fn import_city_profile(day: String, path: String) {
+    println("Loading city profile for day: " + day);
+
+    // Read the overall stats (first row)
+    var overall_reader = CsvReader<CityOverallStatsCSV> {
+        path: path,
+        format: CsvFormat { header_lines: 1 }
+    };
+
+    var overall_stats: CityOverallStats;
+    if (overall_reader.can_read()) {
+        var csv_row = overall_reader.read();
+        // FIX: Manually map from CSV type to persistent type
+        overall_stats = CityOverallStats {
+            detections_total_all_days: csv_row.detections_total_all_days,
+            detections_good_all_days: csv_row.detections_good_all_days,
+            detections_missed_all_days: csv_row.detections_missed_all_days,
+            elapsed_days: csv_row.elapsed_days,
+            n_sites_total: csv_row.n_sites_total,
+            unique_cars_all_days: csv_row.unique_cars_all_days,
+            total_unique_cars: csv_row.total_unique_cars,
+            cars_any_degraded: csv_row.cars_any_degraded,
+            cars_no_degrade: csv_row.cars_no_degrade,
+            cars_all_sites_degraded: csv_row.cars_all_sites_degraded,
+            pct_good_all_days: csv_row.pct_good_all_days,
+            pct_missed_all_days: csv_row.pct_missed_all_days,
+            threshold_good: csv_row.threshold_good
+        };
+    }
+
+    // Read the per-vehicle stats (skip first 3 rows: overall + blank + header)
+    var by_vehicle_reader = CsvReader<CityVehicleTypeStatsCSV> {
+        path: path,
+        format: CsvFormat { header_lines: 4 }
+    };
+
+    var by_vehicle_stats = Array<CityVehicleTypeStats>{};
+    while (by_vehicle_reader.can_read()) {
+        var row = by_vehicle_reader.read();
+        if (row.day == day) {
+            // FIX: Manually map from CSV type to persistent type
+            by_vehicle_stats.add(CityVehicleTypeStats {
+                vehicle_type: row.vehicle_type,
+                detections_total_all_days: row.detections_total_all_days,
+                detections_good_all_days: row.detections_good_all_days,
+                detections_missed_all_days: row.detections_missed_all_days,
+                elapsed_days: row.elapsed_days,
+                n_sites_total: row.n_sites_total,
+                unique_cars_all_days: row.unique_cars_all_days,
+                total_unique_cars: row.total_unique_cars,
+                cars_any_degraded: row.cars_any_degraded,
+                cars_no_degrade: row.cars_no_degrade,
+                cars_all_sites_degraded: row.cars_all_sites_degraded,
+                pct_good_all_days: row.pct_good_all_days,
+                pct_missed_all_days: row.pct_missed_all_days,
+                threshold_good: row.threshold_good
+            });
+        }
+    }
+
+    var profile = CityProfile {
+        day: day,
+        overall: overall_stats,
+        by_vehicle_type: by_vehicle_stats
+    };
+
+    city_profile_by_day.set(day, node<CityProfile>{ profile });
+
+    println("✓ City profile loaded for " + day);
+}
