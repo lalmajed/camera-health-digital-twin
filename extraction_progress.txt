@@ -30,3 +30,4 @@ Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Read ti
 [6/115] District 110: +12,556 | Total: 588,889/914,064 (64.4%) | 1,552/min
 [6/113] 226: +11,856 | 602,695/914,064 (65.9%)
 [7/115] District 154: +12,062 | Total: 600,951/914,064 (65.7%) | 1,479/min
+[8/115] District 226: +11,856 | Total: 612,807/914,064 (67.0%) | 1,501/min
