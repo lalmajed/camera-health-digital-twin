@@ -11,8 +11,9 @@
 [11/115] District 080: +10,647 | Total: 634,930/914,064 | 1,371/min
 [12/115] District 229: +10,157 | Total: 645,087/914,064 | 1,396/min
 [13/115] District 156: +9,775 | Total: 654,862/914,064 | 1,457/min
-iyadh.gov.sa', port=443) at 0x7fa292a16120>, 'Connection to mapservice.alriyadh.gov.sa timed out. (connect timeout=120)'))
-Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Read timed out. (read timeout=120)
+[14/115] District 073: +9,409 | Total: 664,271/914,064 | 1,346/min
+[15/115] District 238: +9,070 | Total: 673,341/914,064 | 1,383/min
+SConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Read timed out. (read timeout=120)
 Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Max retries exceeded with url: /wa_maps/rest/services/BaseMap/Riyadh_BaseMap_V3/MapServer/71/query?where=LANDUSEADETAILED%3D1012+AND+DISTRICT%3D%27078%27+AND+OBJECTID+%3E%3D+3400818.0+AND+OBJECTID+%3C+3402818.0&outFields=OBJECTID%2CPARCELID%2CPARCELNO%2CBLOCKNO%2CPLANNO%2CDISTRICT%2CLANDUSEADETAILED&returnGeometry=true&outSR=4326&f=json (Caused by ConnectTimeoutError(<HTTPSConnection(host='mapservice.alriyadh.gov.sa', port=443) at 0x7fa292a16c60>, 'Connection to mapservice.alriyadh.gov.sa timed out. (connect timeout=120)'))
 Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Max retries exceeded with url: /wa_maps/rest/services/BaseMap/Riyadh_BaseMap_V3/MapServer/71/query?where=LANDUSEADETAILED%3D1012+AND+DISTRICT%3D%27078%27+AND+OBJECTID+%3E%3D+3402818.0+AND+OBJECTID+%3C+3404818.0&outFields=OBJECTID%2CPARCELID%2CPARCELNO%2CBLOCKNO%2CPLANNO%2CDISTRICT%2CLANDUSEADETAILED&returnGeometry=true&outSR=4326&f=json (Caused by ConnectTimeoutError(<HTTPSConnection(host='mapservice.alriyadh.gov.sa', port=443) at 0x7fa292a15ca0>, 'Connection to mapservice.alriyadh.gov.sa timed out. (connect timeout=120)'))
 Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Max retries exceeded with url: /wa_maps/rest/services/BaseMap/Riyadh_BaseMap_V3/MapServer/71/query?where=LANDUSEADETAILED%3D1012+AND+DISTRICT%3D%27078%27+AND+OBJECTID+%3E%3D+3406818.0+AND+OBJECTID+%3C+3408818.0&outFields=OBJECTID%2CPARCELID%2CPARCELNO%2CBLOCKNO%2CPLANNO%2CDISTRICT%2CLANDUSEADETAILED&returnGeometry=true&outSR=4326&f=json (Caused by ConnectTimeoutError(<HTTPSConnection(host='mapservice.alriyadh.gov.sa', port=443) at 0x7fa292a15610>, 'Connection to mapservice.alriyadh.gov.sa timed out. (connect timeout=120)'))
@@ -45,3 +46,4 @@ Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Read ti
 [12/115] District 156: +9,775 | Total: 654,927/914,064 (71.7%) | 1,364/min
 [10/113] 089: +10,139 | 645,201/914,064 (70.6%)
 [11/113] 156: +9,775 | 654,976/914,064 (71.7%)
+Error: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
