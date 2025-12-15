@@ -35,3 +35,4 @@ Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Read ti
 [7/113] 133: +11,566 | 614,261/914,064 (67.2%)
 [9/115] District 133: +11,570 | Total: 624,377/914,064 (68.3%) | 1,387/min
 [8/113] 080: +10,647 | 624,908/914,064 (68.4%)
+Error: HTTPSConnectionPool(host='mapservice.alriyadh.gov.sa', port=443): Read timed out. (read timeout=120)
