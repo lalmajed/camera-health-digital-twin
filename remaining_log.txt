@@ -1,0 +1,6 @@
+============================================================
+EXTRACTING ALL REMAINING PARCELS (294,382)
+============================================================
+Codes to extract: 382
+Expected parcels: 294,382
+Building task list...
