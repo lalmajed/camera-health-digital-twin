@@ -1,0 +1,11 @@
+======================================================================
+RIYADH PARCEL EXTRACTOR - Completing remaining parcels
+======================================================================
+Started: 2025-12-15 04:51:47.223978
+Loading existing data...
+Loaded 369,871 existing
+Getting expected counts...
+Districts to process: 117
+Missing parcels: 544,193
+----------------------------------------------------------------------
+[1/117] District 175: need 40,900 more... +40,900 (total: 43,845)
